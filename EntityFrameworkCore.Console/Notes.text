@@ -1,0 +1,45 @@
+﻿# Unsupported LINQ Methods in Entity Framework Core
+
+Entity Framework Core (EF Core) supports a subset of LINQ methods for translating queries to SQL. Some LINQ methods are not supported and will throw exceptions if used directly on `IQueryable` sources (such as `DbSet<T>`). Below is a list of commonly used LINQ methods that are **not supported** by EF Core as of .NET 7 and EF Core 7.x:
+
+## Commonly Unsupported LINQ Methods
+
+- **MaxBy / MinBy**
+  - Introduced in .NET 6, these methods are not translatable to SQL by EF Core.
+- **Aggregate**
+  - Only supported for client-side collections, not for database queries.
+- **ToLookup**
+  - Not supported for translation; use `GroupBy` instead.
+- **Zip**
+  - Not supported for translation.
+- **SequenceEqual**
+  - Not supported for translation.
+- **DefaultIfEmpty (with predicate)**
+  - Only supported without a predicate.
+- **Reverse**
+  - Not supported for translation.
+- **ElementAt / ElementAtOrDefault**
+  - Not supported for translation.
+- **SkipWhile / TakeWhile**
+  - Not supported for translation.
+- **Any / All (with complex predicates)**
+  - Supported only for simple predicates.
+- **SelectMany (with result selector)**
+  - Only simple projections are supported.
+- **DistinctBy**
+  - Not supported for translation.
+- **Chunk**
+  - Not supported for translation.
+- **GroupJoin (with result selector)**
+  - Only simple projections are supported.
+
+## Notes
+
+- Methods like `OrderBy`, `Where`, `Select`, `FirstOrDefault`, `Count`, `Sum`, `Min`, `Max`, and `Average` are supported.
+- For unsupported methods, you can use `.AsEnumerable()`, `.ToList()`, or `.ToListAsync()` to bring data into memory and then apply the method.
+- Always check the [official EF Core documentation](https://docs.microsoft.com/en-us/ef/core/querying/client-eval) for the latest support status.
+
+## References
+
+- [EF Core LINQ Translation Limitations](https://docs.microsoft.com/en-us/ef/core/querying/client-eval)
+- [EF Core GitHub Issues](https://github.com/dotnet/efcore/issues)

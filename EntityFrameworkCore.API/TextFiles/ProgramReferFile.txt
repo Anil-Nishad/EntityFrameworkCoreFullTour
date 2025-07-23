@@ -1,0 +1,104 @@
+﻿using EntityFrameworkCore.API.Middleware;
+using EntityFrameworkCore.Data;
+using EntityFrameworkCore.Data.WebAPIContext;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using System.Text.Json.Serialization;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    //options.JsonSerializerOptions.PropertyNamingPolicy = null; // Preserve property names as they are defined in the model
+    //options.JsonSerializerOptions.DictionaryKeyPolicy = null; // Preserve dictionary keys as they are defined in the model
+    //options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull; // Ignore null values when serializing
+    //options.JsonSerializerOptions.WriteIndented = true; // Format JSON output for readability
+    //options.JsonSerializerOptions.PropertyNameCaseInsensitive = false; // Allow case-insensitive property names
+    //options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles; // Ignore cycles in object references to prevent stack overflow errors
+});
+// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddOpenApi();
+//var connectionString = builder.Configuration.GetConnectionString("SqlDatabaseConnectionString");
+var sqLiteDatabaseName = builder.Configuration.GetConnectionString("SqliteDatabaseConnectionString");
+var folder = Environment.SpecialFolder.LocalApplicationData;
+var path = Environment.GetFolderPath(folder);
+var dbPath = Path.Combine(path, sqLiteDatabaseName);
+var connectionString = $"Data Source = {dbPath}";
+
+builder.Services.AddDbContext<FootballLeagueWebAPIContext>(options =>
+{
+    options.UseSqlite(connectionString);
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking); // Use NoTracking for better performance in read-only scenarios
+    options.LogTo(Console.WriteLine, LogLevel.Information);
+    if (!builder.Environment.IsProduction())
+    {
+        options.EnableSensitiveDataLogging(); // EnableSensitiveDataLogging is useful for debugging but should be disabled in production
+        options.EnableDetailedErrors(); // EnableDetailedErrors provides more detailed error messages, which can be helpful during development.
+    }
+                
+});
+
+builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+//app.UseMiddleware<SwaggerBasicAuthMiddleware>("admin", "yourStrongPassword");
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+{
+    app.MapOpenApi();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "v1");
+    });
+}
+
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+// Add this before app.UseSwaggerUI() in your pipeline
+app.UseWhen(
+    context => context.Request.Path.StartsWithSegments("/swagger"),
+    appBuilder =>
+    {
+        appBuilder.Use(async (context, next) =>
+        {
+            // Simple Basic Auth (for demonstration only)
+            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+            if (authHeader != null && authHeader.StartsWith("Basic "))
+            {
+                var encodedUsernamePassword = authHeader.Substring("Basic ".Length).Trim();
+                var decodedUsernamePassword = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(encodedUsernamePassword));
+                var username = decodedUsernamePassword.Split(':')[0];
+                var password = decodedUsernamePassword.Split(':')[1];
+
+                // Replace with your own logic/credentials
+                if (username == "admin" && password == "yourStrongPassword")
+                {
+                    await next.Invoke();
+                    return;
+                }
+            }
+            context.Response.Headers["WWW-Authenticate"] = "Basic";
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        });
+    }
+);
+
+// Now add Swagger UI as usual
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.Run();
