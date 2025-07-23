@@ -1,8 +1,6 @@
 ﻿using EntityFrameworkCore.API.Middleware;
-using EntityFrameworkCore.Data;
 using EntityFrameworkCore.Data.WebAPIContext;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,7 +9,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 {
     // Configure JSON options as needed
 });
-builder.Services.AddOpenApi();
+//builder.Services.AddOpenApi();
 
 var sqLiteDatabaseName = builder.Configuration.GetConnectionString("SqliteDatabaseConnectionString");
 var folder = Environment.SpecialFolder.LocalApplicationData;
@@ -45,7 +43,7 @@ if (app.Environment.IsProduction())
 // Enable Swagger/OpenAPI in Development and Staging
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
-    app.MapOpenApi();
+    
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
